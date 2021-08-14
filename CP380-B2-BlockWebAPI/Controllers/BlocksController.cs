@@ -1,59 +1,79 @@
-﻿using CP380_B1_BlockList.Models;
+
+using CP380_B1_BlockList.Models;
 using CP380_B2_BlockWebAPI.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http.Json;
 using System.Threading.Tasks;
 
 namespace CP380_B2_BlockWebAPI.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     [Produces("application/json")]
     public class BlocksController : ControllerBase
     {
+        // TODO
+
+        private BlockList blist;
+
+        public BlocksController(BlockList blockList)
+        {
+            blist = blockList;
+        }
+
 
         [HttpGet("/blocks")]
-        public string GetAllBlocks()
+        public IActionResult Get()
         {
-            BlockList blist = new BlockList();
-            List<BlockSummary> bfinal = new List<BlockSummary>();
-            for(int i = 0; i < blist.Chain.Count; i++)
+            return Ok(blist.Chain.Select(block => new BlockSummary()
             {
-                BlockSummary summary = new BlockSummary();
-                summary.Timedate = blist.Chain[i].TimeStamp;
-                summary.PreviousHash = blist.Chain[i].PreviousHash;
-                summary.Hash = blist.Chain[i].Hash;
-                bfinal.Add(summary);
+                Hash = block.Hash,
+                PreviousHash = block.PreviousHash,
+                TimeStamp = block.TimeStamp
+            }));
+        }
+
+        
+         [HttpGet("/blocks/{hash?}")]
+        public IActionResult GetBlock(string hash)
+        {
+            var block = blist.Chain
+                .Where(block => block.Hash.Equals(hash));
+
+            if (block != null && block.Count() > 0)
+            {
+                return Ok(block
+                    .Select(block => new BlockSummary()
+                    {
+                        Hash = block.Hash,
+                        PreviousHash = block.PreviousHash,
+                        TimeStamp = block.TimeStamp
+                    }
+                    )
+                    .First());
             }
-            return JsonConvert.SerializeObject(bfinal);
+
+            return NotFound();
         }
 
-        [HttpGet("/blocks/{hash?}")]
-        public string GetAllBlocks(int hash)
+             [HttpGet("/blocks/{hash?}/payloads")]
+        public IActionResult GetBlockPayload(string hash)
         {
-            Block block = null;
-            BlockList blist = new BlockList();
-            if (hash < blist.Chain.Count)
-                block = blist.Chain[hash];
-            if (block == null)
-                return JsonConvert.SerializeObject(NotFound());
-            return JsonConvert.SerializeObject(block);
-        }
+            var block = blist.Chain
+                        .Where(block => block.Hash.Equals(hash));
 
-        [HttpGet("/blocks/{hash?}/payloads")]
-        public string GetAllPayloads(int Hash)
-        {
-            Block block = null;
-            BlockList blockList = new BlockList();
-            if (Hash < blockList.Chain.Count)
-                block = blockList.Chain[Hash];
-            return JsonConvert.SerializeObject(block.Data);
-        }
+            if (block != null && block.Count() > 0)
+            {
+                return Ok(block
+                    .Select(block => block.Data
+                    )
+                    .First());
+            }
 
+            return NotFound();
+        }
     }
 }
